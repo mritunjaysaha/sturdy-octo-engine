@@ -1,5 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useChatStore } from '../store/chatStore';
 import { UserBubble } from '../components/chat/bubbles/UserBubble';
@@ -7,6 +14,7 @@ import { AIBubble } from '../components/chat/bubbles/AIBubble';
 import { HumanBubble } from '../components/chat/bubbles/HumanBubble';
 import { SystemBanner } from '../components/chat/bubbles/SystemBanner';
 import { DateSeparator } from '../components/chat/bubbles/DateSeparator';
+import { MessageComposer } from '../components/chat/MessageComposer';
 import { Message } from '../types/chat';
 import { bootstrapRecommendationRegistry } from '../registry/bootstrapRegistry';
 
@@ -36,39 +44,45 @@ export const ConversationScreen = () => {
         <Text style={styles.headerTitle}>MyNaksh AI Astrologer</Text>
       </View>
 
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={item => item.id}
-        style={styles.timeline}
-        contentContainerStyle={styles.listContent}
-        renderItem={({ item, index }) => {
-          const prev = index > 0 ? messages[index - 1] : null;
-          const isConsecutive = prev !== null && prev.type === item.type;
-          const showDateSeparator =
-            index === 0 ||
-            new Date(item.timestamp).toDateString() !==
-              new Date(messages[index - 1].timestamp).toDateString();
+      <KeyboardAvoidingView
+        style={styles.body}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={item => item.id}
+          style={styles.timeline}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item, index }) => {
+            const prev = index > 0 ? messages[index - 1] : null;
+            const isConsecutive = prev !== null && prev.type === item.type;
+            const showDateSeparator =
+              index === 0 ||
+              new Date(item.timestamp).toDateString() !==
+                new Date(messages[index - 1].timestamp).toDateString();
 
-          return (
-            <View style={styles.itemWrapper}>
-              {showDateSeparator && (
-                <DateSeparator timestamp={item.timestamp} />
-              )}
-              {item.type === 'user' && (
-                <UserBubble message={item} isConsecutive={isConsecutive} />
-              )}
-              {item.type === 'ai' && (
-                <AIBubble message={item} isConsecutive={isConsecutive} />
-              )}
-              {item.type === 'human' && (
-                <HumanBubble message={item} isConsecutive={isConsecutive} />
-              )}
-              {item.type === 'system' && <SystemBanner message={item} />}
-            </View>
-          );
-        }}
-      />
+            return (
+              <View style={styles.itemWrapper}>
+                {showDateSeparator && (
+                  <DateSeparator timestamp={item.timestamp} />
+                )}
+                {item.type === 'user' && (
+                  <UserBubble message={item} isConsecutive={isConsecutive} />
+                )}
+                {item.type === 'ai' && (
+                  <AIBubble message={item} isConsecutive={isConsecutive} />
+                )}
+                {item.type === 'human' && (
+                  <HumanBubble message={item} isConsecutive={isConsecutive} />
+                )}
+                {item.type === 'system' && <SystemBanner message={item} />}
+              </View>
+            );
+          }}
+        />
+        <MessageComposer />
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -91,12 +105,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
+  body: {
+    flex: 1,
+  },
   timeline: {
     flex: 1,
   },
   listContent: {
     paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingTop: 12,
+    paddingBottom: 20,
   },
   itemWrapper: {
     width: '100%',
