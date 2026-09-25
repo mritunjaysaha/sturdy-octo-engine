@@ -1,97 +1,112 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# MyNaksh AI Astrologer
 
-# Getting Started
+AI conversation interface and Server-Driven UI (SDUI) recommendation framework for astrology consultations.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## Setup & Running
 
-## Step 1: Start Metro
-
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
-
-To start the Metro dev server, run the following command from the root of your React Native project:
-
-```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
-```
-
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
-
-### Android
-
-```sh
-# Using npm
+```bash
+npm install
 npm run android
-
-# OR using Yarn
-yarn android
 ```
 
-### iOS
-
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
+To run checks:
+```bash
+npm run lint
+npx tsc --noEmit
 ```
 
-Then, and every time you update your native dependencies, run:
+## Project Structure
 
-```sh
-bundle exec pod install
+The codebase decouples domain types (`src/types`), mock data (`src/data`), state management (`src/store`), and Server-Driven UI registry bindings (`src/registry`) from the presentation layer. The UI is split into screen containers (`src/Screens`), polymorphic chat bubbles (`src/components/chat`), and modular recommendation card renderers (`src/components/recommendations`).
+
+```text
+MyNakshAssignment/
+├── .eslintrc.js
+├── .gitignore
+├── .prettierrc.js
+├── .watchmanconfig
+├── app.json
+├── App.tsx
+├── babel.config.js
+├── Gemfile
+├── index.js
+├── jest.config.js
+├── metro.config.js
+├── package.json
+├── tsconfig.json
+├── __tests__/
+│   └── App.test.tsx
+└── src/
+    ├── types/
+    │   └── chat.ts
+    ├── data/
+    │   └── mockConversation.ts
+    ├── registry/
+    │   ├── recommendationRegistry.ts
+    │   └── bootstrapRegistry.ts
+    ├── store/
+    │   └── chatStore.ts
+    ├── Screens/
+    │   └── ConversationScreen.tsx
+    └── components/
+        ├── chat/
+        │   ├── MessageComposer.tsx
+        │   └── bubbles/
+        │       ├── UserBubble.tsx
+        │       ├── AIBubble.tsx
+        │       ├── HumanBubble.tsx
+        │       ├── SystemBanner.tsx
+        │       └── DateSeparator.tsx
+        └── recommendations/
+            ├── RecommendationList.tsx
+            └── cards/
+                ├── GemStoneCard.tsx
+                ├── TarotCard.tsx
+                ├── ConsultationCard.tsx
+                ├── ArticleCard.tsx
+                ├── PromotionCard.tsx
+                └── DefaultFallbackCard.tsx
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+## Component Architecture
 
-```sh
-# Using npm
-npm run ios
+- **Polymorphic Timeline:** FlatList dispatches to dedicated bubble components (`UserBubble`, `AIBubble`, `HumanBubble`, `SystemBanner`) based on message type instead of a large conditional component.
+- **Message Grouping:** Consecutive messages from the same sender collapse author headers and spacing to increase message density.
+- **Date Separators:** Rendered inline when a message's timestamp crosses into a new calendar day.
+- **Touch Ergonomics:** Interactive cards and buttons use `Pressable` with `hitSlop` bounds to avoid missed taps.
 
-# OR using Yarn
-yarn ios
-```
+## State Management
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+Centralized with Zustand in `src/store/chatStore.ts`:
+- **Optimistic Sends:** Appends the message immediately with `sending` status, clears the input, and updates to `sent` after an ~1100ms API delay while appending a simulated AI response.
+- **Error & Retry:** Messages containing `"fail"` transition to `failed` status, showing an inline retry trigger that re-executes the send pipeline.
+- **Lifecycle Handling:**
+  - Initial load shows a spinner with `"Loading conversation..."` (600ms simulated fetch).
+  - Empty array shows `ListEmptyComponent` with `"Start your conversation."` while keeping the composer active.
+  - Failure displays `"Unable to load conversation."` with a retry button to re-trigger fetch.
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## Recommendation Rendering Strategy
 
-## Step 3: Modify your app
+Implemented Server-Driven UI following the Open-Closed Principle (OCP):
+- `RecommendationRegistry` (`src/registry/recommendationRegistry.ts`) maps card type strings (`gemstone`, `tarot`, `consultation`, `article`, `promotion`) to their component renderers.
+- Adding a new card only requires registering it in `src/registry/bootstrapRegistry.ts`. Neither the AI bubble nor the timeline components need to be modified.
+- Unrecognized or malformed schemas fall back to `DefaultFallbackCard` to avoid crashes.
+- Cards animate into view with staggered entry using React Native Reanimated on the native thread.
 
-Now that you have successfully run the app, let's make changes!
+## Performance Considerations
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+- Virtualized `FlatList` with unique `id` keys to keep memory low during long chat histories.
+- Card entry animations run on the UI thread via Reanimated worklets without bridge overhead.
+- Zustand selectors used to prevent unnecessary re-renders on typing.
+- Explicit dimensions on recommendation cards to prevent layout shifts.
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+## Trade-offs (Features Skipped in Part B)
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+Given the 3-hour time constraint, I prioritized getting the core timeline, SDUI registry, optimistic sends, and error/lifecycle recovery solid. The following Part B features were cut:
 
-## Congratulations! :tada:
-
-You've successfully run and modified your React Native App. :partying_face:
-
-### Now what?
-
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+1. **Conversation Actions (Long-Press):**
+   - Action sheet / modal on long-pressing AI messages (`Copy`, `Delete`, `Reply`).
+   - Quote reply preview banner above the composer.
+2. **AI Feedback:**
+   - Like / Dislike reaction buttons under AI messages.
+   - Expandable feedback chips (`Inaccurate`, `Too Generic`, `Didn't Help`, `Too Long`) and local state tracking for them.
